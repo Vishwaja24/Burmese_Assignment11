@@ -1,26 +1,40 @@
-#Vish
+﻿# File Name : anomaly_detector.py
+# Student Name: Vishwaja Painjane, Zulqarnayan Hossain
+# email:  painjavv@mail.uc.edu, hossaizn@mail.uc.edu
+# Assignment Number: Assignment 11
+# Due Date:   April 17, 2025
+# Course #/Section:   IS 4010 Section 001
+# Semester/Year:   Spring 2025
+# Brief Description of the assignment:  We are creating a data processing pipeline from a CSV file that includes cleaning, anomaly detection, and ZIP code updating.
+
+# Brief Description of what this module does. We are detecting anomalies in the fuel purchase data.
+# Citations: openai.com/chatgpt
+
+# Anything else that's relevant: N/A
 
 import pandas as pd
 import os
 
 class AnomalyDetector:
-    def __init__(self, input_file, anomalies_file, clean_data_file):
-        self.input_file = input_file
-        self.anomalies_file = anomalies_file
-        self.clean_data_file = clean_data_file
+    def __init__(self, df, anomalies_filename):
+        self.df = df
+        self.anomalies_filename = anomalies_filename
 
     def detect_anomalies(self):
-        df = pd.read_csv(self.input_file) #This will read the input CSV file.
+        # Normalize and find rows where Fuel Type is exactly "Pepsi"
+        anomalies = self.df[self.df['Fuel Type'].str.strip().str.lower() == 'pepsi']
+        
+        # Remove those rows from the original dataset
+        cleaned_data = self.df[self.df['Fuel Type'].str.strip().str.lower() != 'pepsi']
 
-        anomalies = df[df['Product'] != 'Fuel']
-        cleaned_data = df[df['Product'] == 'Fuel'] #Filter out the anomalies
+        # Save anomalies to a separate CSV
+        os.makedirs("Data", exist_ok=True)
+        anomalies.to_csv(os.path.join("Data", self.anomalies_filename), index=False)
 
-        os.makedirs('Data', exist_ok=True) #Create a directory named 'Data' if it doesn't exist
-        anomalies.to_csv(os.path.join('Data', self.anomalies_file), index=False) #Save the anomalies to a CSV file
+        print(f"Found {len(anomalies)} Pepsi rows")
+        print(f"Returning {len(cleaned_data)} cleaned rows")
 
-        cleaned_data.to_csv(os.path.join('Data', self.clean_data_file), index=False) #Save the cleaned data to a CSV file
-
-        print("Anomalies and cleaned data processed successfully.")
+        return cleaned_data
 
 
 

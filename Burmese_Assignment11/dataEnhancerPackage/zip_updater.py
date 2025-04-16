@@ -1,41 +1,83 @@
-#Vish
+﻿# File Name : zip_updater.py
+# Student Name: Vishwaja Painjane, Zulqarnayan Hossain
+# email:  painjavv@mail.uc.edu, hossaizn@mail.uc.edu
+# Assignment Number: Assignment 11
+# Due Date:   April 17, 2025
+# Course #/Section:   IS 4010 Section 001
+# Semester/Year:   Spring 2025
+# Brief Description of the assignment:  We are creating a data processing pipeline from a CSV file that includes cleaning, anomaly detection, and ZIP code updating.
 
-import requests
+# Brief Description of what this module does. We are updating missing ZIP codes using an external API.
+# Citations: openai.com/chatgpt
+
+# Anything else that's relevant: N/A
+
+
 import pandas as pd
-import os
+import requests
+import time
+import re
 
-class ZipUpdater:
-    def __init__(self, input_file, output_file, api_key):
-        self.input_file = input_file
-        self.output_file = output_file
+class ZipCodeUpdater:
+    def __init__(self, dataframe, api_key):
+        self.df = dataframe
         self.api_key = api_key
-        self.api_url = "https://app.zipcodebase.com/api/v1/search"
+        self.api_url = "https://api.geocod.io/v1.7/geocode"
 
-    def update_zip_codes(self):
-        # Read the input file
-        df = pd.read_csv(self.input_file)
+    def has_zip_code(self, address):
+        zip_pattern = r'\b\d{5}(?:-\d{4})?\b'
+        return bool(re.search(zip_pattern, address))
 
-        # Identify rows with missing zip codes
-        missing_zips = df[df['ZipCode'].isnull()]
+    def update_missing_zip_codes(self):
+        updated_count = 0
+        addresses_to_update = []
 
-        for index, row in missing_zips.iterrows():
-            city = row['City']
-            state = row['State']
+        # Step 1: Find first 5 addresses without ZIP codes
+        for idx, row in self.df.iterrows():
+            if 'Full Address' not in row or pd.isna(row['Full Address']):
+                continue
 
-            # Make API request
-            params = {'apikey': self.api_key, 'city': city, 'state': state}
+            full_address = str(row['Full Address']).strip()
+            if not self.has_zip_code(full_address):
+                addresses_to_update.append((idx, full_address))
+                if len(addresses_to_update) >= 5:
+                    break
+
+        print(f"Found {len(addresses_to_update)} addresses without ZIP codes\n")
+
+        # Step 2: Query Geocod.io
+        for idx, address in addresses_to_update:
+            params = {
+                'q': address,
+                'api_key': self.api_key
+            }
+
             try:
+                print(f"Processing row {idx}: {address}")
                 response = requests.get(self.api_url, params=params)
-                response_data = response.json()
 
-                if 'results' in response_data and response_data['results']:
-                    # Use the first zip code from results
-                    df.at[index, 'ZipCode'] = response_data['results'][0]['zipcode']
+                if response.status_code == 200:
+                    data = response.json()
+                    results = data.get('results', [])
+                    if results:
+                        zip_code = results[0].get('address_components', {}).get('zip')
+                        if zip_code:
+                            new_address = f"{address}, {zip_code}"
+                            self.df.loc[idx, 'Full Address'] = new_address
+                            print(f"Row {idx} updated → {new_address}")
+                            updated_count += 1
+                        else:
+                            print(f"ZIP not found in response for row {idx}")
+                    else:
+                        print(f"No results for row {idx}")
+
+                else:
+                    print(f"API Error {response.status_code} for row {idx}: {response.text}")
 
             except Exception as e:
-                print(f"Error updating zip code for {city}, {state}: {e}")
+                print(f"Exception for row {idx}: {e}")
 
-        # Write the updated data to a new file
-        os.makedirs('Data', exist_ok=True)
-        df.to_csv(os.path.join('Data', self.output_file), index=False)
-        print("Zip codes updated successfully.")
+            time.sleep(1)
+
+        print(f"\n ZIP enrichment complete. {updated_count} rows updated.\n")
+        return self.df
