@@ -48,6 +48,10 @@
     <Folder Include="dataEnhancerPackage\" />
     <Folder Include="dataProcessorPackage\" />
     <Folder Include="mainPackage\" />
+    <Folder Include="Data\" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="Data\fuelPurchaseData.csv" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
   <!-- Uncomment the CoreCompile target to enable the Build command in
